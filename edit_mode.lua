@@ -9,8 +9,29 @@ local return_to_pregame
 
 local campaign_meta_data= {}
 
+local entry_path_color= {192, 64, 0}
+local attack_path_color= {0, 64, 192}
+local editing_path_color= {64, 192, 0}
+local selected_path_color= {0, 192, 64}
+
 local active_campaign_data
 local drawable_paths= {}
+
+local edit_state_data= {}
+-- Path group edit mode:
+-- {
+--   unselected_paths= {
+--     {
+--       name= "entry_paths.group.name",
+--       source= original,
+--       x= x, y= y,
+--       drawable_path= drawb,
+--       -- x and y are copied from the entry path entry.
+--       -- Attack paths can be repositioned for editing purposes.
+--     },
+--   },
+--   selected_paths= {}, -- Identical to unselected_paths.
+-- }
 
 local function make_drawable_path(cont_name, group_name, path_name, path)
 	local new_drawb_path= {}
@@ -26,13 +47,10 @@ local function make_drawable_path(cont_name, group_name, path_name, path)
 		new_drawb_path[#new_drawb_path+1]= y
 	end
 	drawable_paths[cont_name.."."..group_name.."."..path_name]= new_drawb_path
+	return new_drawb_path
 end
 
 local function update(delta)
-	
-end
-
-local function draw_path(path)
 	
 end
 
@@ -66,13 +84,14 @@ end
 local function after_pick_campaign_to_edit()
 	general_after()
 	drawable_paths= {}
-	local cont_names= {"entry_paths", "attack_paths"}
-	for i, path_container in ipairs{active_campaign_data.data.entry_paths
-																	active_campaign_data.data.attack_paths} do
-		for group_name, group in pairs(path_container) do
-			for path_name, path in pairs(group) do
-				make_drawable_path(cont_names[i], group_name, path_name, path)
-			end
+	for group_name, group in pairs(active_campaign_data.entry_paths) do
+		for path_name, path in pairs(group) do
+			make_drawable_path("entry_paths", group_name, path_name, path.path)
+		end
+	end
+	for group_name, group in pairs(active_campaign_data.attack_paths) do
+		for path_name, path in pairs(group) do
+			make_drawable_path("attack_paths", group_name, path_name, path)
 		end
 	end
 end

@@ -14,6 +14,7 @@ function love.conf(t)
 	t.window.resizable = false
 	t.window.minwidth = t.window.width
 	t.window.minheight = t.window.height
+	t.window.vsync= false
 	t.window.fullscreen = false
 
 	t.modules.audio = false
