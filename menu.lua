@@ -3,9 +3,6 @@ local key_config= require("key_config")
 local images= require("images")
 local sprite_oneesan= require("sprite")
 
-local return_to_thing
-local bg_draw
-
 local active_menu
 
 local items_per_page= 20
@@ -33,12 +30,19 @@ local close_menu_y= menu_start_y - menu_row_spacing
 --   -- If func returns "'close', 1", the current submenu is closed.
 --   --   The number returned with "close" is the number of submenu layers to
 --   --   close.  -1 will close the entire menu.
+--   -- If func returns "'close', 1, {}", the table replaces the items in the
+--   --   menu after closing that number of levels.  This is equivalent to
+--   --   "'close', 1" followed by "'refresh', {}".
 --   {name= "foo", value= "bar", arg= {}, func= function(arg) end,
 --     adjust_up= function(arg) end, adjust_down= function(arg) end},
 --   -- func has the same behavior as the first example.
 --   -- The player has two buttons for adjusting the value of a menu item.
 --   -- adjust_up and adjust_down are used for these buttons.
 --   -- adjust_* must return the new value to display.
+--   on_return= function() end, -- Optional.
+--   -- When a submenu is closed and the menu returns to this level,
+--   -- on_return is called.  Its return values are handled the same way as
+--   -- the func function of a menu item.
 --   ...
 -- }
 
@@ -74,6 +78,7 @@ local function max_clamp_menu_offset(top, off)
 end
 
 local function deactivate(self)
+	self.active= false
 	if active_menu == self then
 		active_menu= nil
 	end
@@ -85,6 +90,7 @@ local function destroy(self)
 end
 
 local function activate(self)
+	self.active= true
 	active_menu= self
 	key_config.set_active_section("menu")
 end
@@ -94,8 +100,10 @@ local function draw(self)
 	love.graphics.setColor(255, 255, 255)
 	love.graphics.translate(self.x, self.y)
 	local key_info= key_config.get_section_info("menu")
-	love.graphics.print(key_info[1].keys[1], close_menu_key_x, close_menu_y)
-	love.graphics.print(key_info[1].name, close_menu_name_x, close_menu_y)
+	if self.on_close or #self.stack > 0 then
+		love.graphics.print(key_info[1].keys[1], close_menu_key_x, close_menu_y)
+		love.graphics.print(key_info[1].name, close_menu_name_x, close_menu_y)
+	end
 	local first_item= self.menu_offset
 	local after_last_item= math.min(#self.top+1, first_item + items_per_page)
 	local num_items= after_last_item - first_item
@@ -121,14 +129,17 @@ local function draw(self)
 	love.graphics.pop()
 end
 
-local function handle_func_call(self, row_info)
-	if not row_info.func then return end
-	local action, info= row_info.func(row_info.arg)
+local function handle_menu_changer(self, action, info, more_info)
 	if action == "close" then
 		if type(info) ~= "number" then
 			info= 1
 		end
 		self:close_level(info)
+		if type(more_info) == "table" then
+			self.top= more_info
+			self.menu_offset= max_clamp_menu_offset(self.top, self.menu_offset)
+			self.cursor_offset= math.min(self.cursor_offset, #self.top - self.menu_offset)
+		end
 	elseif action == "refresh" then
 		self.top= info
 		self.menu_offset= max_clamp_menu_offset(self.top, self.menu_offset)
@@ -142,6 +153,16 @@ local function handle_func_call(self, row_info)
 	else
 		-- do nothing
 	end
+end
+
+local function handle_func_call(self, row_info)
+	if not row_info.func then return end
+	handle_menu_changer(self, row_info.func(row_info.arg))
+end
+
+local function handle_on_return(self)
+	if not self.top.on_return then return end
+	handle_menu_changer(self, self.top.on_return())
 end
 
 local function handle_adjust_down(self, row_info)
@@ -190,7 +211,7 @@ end
 local function mousewheel(self, x, y)
 	if y >= 1 then
 		self.menu_offset= min_clamp_menu_offset(self.menu_offset - 1)
-	elseif y <= 1 then
+	elseif y <= -1 then
 		self.menu_offset= max_clamp_menu_offset(self.top, self.menu_offset + 1)
 	end
 end
@@ -205,6 +226,7 @@ local function full_close(self)
 			self.menu_offset= info.moff
 			self.cursor_offset= info.coff
 			self.stack= {}
+			self:handle_on_return()
 		end
 	end
 end
@@ -225,6 +247,7 @@ local function close_level(self, num)
 			for i= #self.stack, new_top_index, -1 do
 				table.remove(self.stack, i)
 			end
+			self:handle_on_return()
 		end
 	end
 end
@@ -304,10 +327,12 @@ local function create(menu_info, on_close, x, y)
 	return {
 		x= x, y= y, top= menu_info, on_close= on_close,
 		stack= {}, menu_offset= 1, cursor_offset= 0, cursor_image= images.player,
-		cursor_sprite= sprite_oneesan.create_sprite(#images.player.frames, 1, .25),
+		cursor_sprite= sprite_oneesan.create_sprite(love.timer.getTime(), #images.player.frames, .25),
 		draw= draw, mousemoved= mousemoved, mousepressed= mousepressed,
 		mousewheel= mousewheel, activate= activate, deactivate= deactivate,
 		destroy= destroy, close_level= close_level, full_close= full_close,
+		handle_menu_changer= handle_menu_changer,
+		handle_on_return= handle_on_return,
 		handle_func_call= handle_func_call, handle_adjust_up= handle_adjust_up,
 		handle_adjust_down= handle_adjust_down, choose_option= choose_option,
 		cursor_up= cursor_up, cursor_down= cursor_down, adjust_down= adjust_down,

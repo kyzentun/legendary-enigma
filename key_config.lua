@@ -446,7 +446,7 @@ local function begin(modore)
 	build_menu_from_config()
 	cursor_sprite= {
 		image= images.player,
-		sprite= sprite_oneesan.create_sprite(#images.player.frames, 1, .25),
+		sprite= sprite_oneesan.create_sprite(love.timer.getTime(), #images.player.frames, .25),
 	}
 	cursor_pos= 1
 	cursor_section_name= sorted_section_names[1]

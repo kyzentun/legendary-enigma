@@ -3,6 +3,7 @@ local images= require("images")
 local key_config= require("key_config")
 local gameplay= require("gameplay")
 local menu_test= require("menu_test")
+local edit_mode= require("edit_mode")
 
 local title_x= (dimensions.space_width - 126) * .5
 local title_y= (dimensions.status_height + dimensions.space_height) * .05
@@ -115,6 +116,9 @@ key_config.register_section(
 		},
 		{name= "menu_test", keys= {"m"},
 		 press= function() menu_test.begin(pregame_begin) end,
+		},
+		{name= "edit_mode", keys= {"e"},
+		 press= function() edit_mode.begin(pregame_begin) end,
 		},
 })
 

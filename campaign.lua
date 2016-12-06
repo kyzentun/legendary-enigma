@@ -237,6 +237,7 @@ local function load_all_campaign_meta()
 			if err then
 				save.log("Cannot load campaign meta data: " .. err)
 			else
+				data.meta_file= fname
 				if type(data.name) ~= "string" then
 					data.name= camp_name
 				end
@@ -253,7 +254,7 @@ local function load_all_campaign_meta()
 				campaign_meta_data[camp_name]= {
 					name= camp_name, author= "Unknown", description= "",
 					campaign_version= {1, 0, 0}, format_version= {1, 0, 0},
-					data_file= fname,
+					data_file= fname, meta_file= camp_name .. "_" .. meta_end,
 				}
 			end
 			if love.filesystem.getRealDirectory(campaign_path..fname) == love.filesystem.getSaveDirectory() then
@@ -279,7 +280,7 @@ local function unique_untitled_meta()
 	local data= {
 		name= final_name, author= "Unknown", description= "",
 		campaign_version= {1, 0, 0}, format_version= {1, 0, 0},
-		data_file= name .. "_" .. data_end,
+		data_file= final_name .. "_" .. data_end,
 	}
 	campaign_meta_data[final_name]= data
 	return data
@@ -298,6 +299,11 @@ local function load_campaign_level_data(camp_name)
 		return false, "Campaign loading failed: " .. err
 	end
 	return data
+end
+
+local function save_campaign_data(meta, data)
+	save.write_save_file(campaign_path..meta.meta_file, meta)
+	save.write_save_file(campaign_path..meta.data_file, data)
 end
 
 local function make_randomable_attack_path_list(camp_data)
